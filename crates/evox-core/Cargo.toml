@@ -1,8 +1,27 @@
+#[package]
+#name = "evox-core"
+#version.workspace = true
+#authors.workspace = true
+#edition.workspace = true
+#description.workspace = true
+#
+#[dependencies]
+
 [package]
 name = "evox-core"
-version.workspace = true
-authors.workspace = true
-edition.workspace = true
-description.workspace = true
+version = "0.1.0"
+edition = "2021"
 
 [dependencies]
+# ما به جای نوشتن نسخه، از قابلیت inheritance استفاده می‌کنیم
+# این یعنی: "از همان نسخه‌ای که در ریشه تعریف شده استفاده کن"
+tokio = { workspace = true }
+serde = { workspace = true }
+# اگر در آینده خواستید از serde_json استفاده کنید، اینجا اضافه می‌کنید:
+# serde_json = { workspace = true }
+#######################################################################
+# اضافه کردن ماژول کریپتو که خودمان ساختیم
+evox-crypto = { path = "../evox-crypto" }
+#######################################################################
+bincode = { workspace = true }
+

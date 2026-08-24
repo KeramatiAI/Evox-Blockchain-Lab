@@ -1,8 +1,21 @@
+#[package]
+#name = "evox-crypto"
+#version.workspace = true
+#authors.workspace = true
+#edition.workspace = true
+#description.workspace = true
+#
+#[dependencies]
+
 [package]
 name = "evox-crypto"
-version.workspace = true
-authors.workspace = true
-edition.workspace = true
-description.workspace = true
+version = "0.1.0"
+edition = "2021"
 
 [dependencies]
+# استفاده از ed25519-dalek که در workspace تعریف کردیم
+ed25519-dalek = { workspace = true }
+# برای تولید اعداد تصادفی جهت ساخت کلیدها
+rand = "0.8"
+# برای مدیریت خطاها
+thiserror = { workspace = true }
