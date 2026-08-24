@@ -1,0 +1,22 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/evox-core",
+    "crates/evox-runtime",
+    "crates/evox-state",
+    "crates/evox-crypto",
+]
+
+# This section is for managing versions and shared dependencies across the entire project.
+[workspace.package]
+version = "0.1.0"
+authors = ["EvoX Team"]
+edition = "2021"
+description = "EvoX High-Performance Blockchain Infrastructure"
+
+[workspace.dependencies]
+# Here we define dependencies that are common to all modules
+# For example, in the future if we want to use Tokio for networking, we add it here
+tokio = { version = "1.0", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+
