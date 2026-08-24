@@ -1,5 +1,4 @@
-// // این خط را اضافه کنید تا Signature از طریق ماژول ما در دسترس باشد
-// pub use ed25519_dalek::Signature;
+// crates/evox-crypto/src/lib.rs
 
 pub use ed25519_dalek::{Signature, Signer, Verifier, SigningKey, VerifyingKey};
 use rand::rngs::OsRng;
