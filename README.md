@@ -59,16 +59,16 @@ This project is optimized for professional Rust development.
 Root Directory: evox-blockchain
 ```
 evox-blockchain/
-├── crates/                 # ماژول‌های اصلی (توسعه شده با Rust)
-│   ├── evox-core/          # هسته (اجماع، شبکه، امنیت)
-│   ├── evox-runtime/       # موتور اجرا (Parallel Execution Engine)
-│   ├── evox-state/         # مدیریت وضعیت (Stateless State Management)
-│   └── evox-crypto/        # زیرساخت رمزنگاری
-├── docs/                   # مستندات فنی و Whitepaper
-├── examples/               # راهنمای استفاده برای برنامه‌نویسان
-├── tests/                  # تست‌های فشار (Stress Tests) و امنیت
-├── Cargo.toml              # فایل اصلی مدیریت پروژه Rust
-└── README.md               # ویترین پروژه (نام EvoX و شعار اصلی)
+├── crates/                 # Core modules (developed with Rust)
+│   ├── evox-core/          # Core (consensus, network, security)
+│   ├── evox-runtime/       # Parallel Execution Engine
+│   ├── evox-state/         # Stateless State Management
+│   └── evox-crypto/        # Cryptographic infrastructure
+├── docs/                   # Technical documentation and whitepaper
+├── examples/               # User Guide for Programmers
+├── tests/                  # Stress Tests and Security
+├── Cargo.toml              # The main Rust project management file
+└── README.md               
 ```
 
 🤝 Contributing
