@@ -69,6 +69,7 @@ This is currently in the Lab Phase. We are defining the foundations of the next 
 Built with ❤️ and Rust for the future of decentralized computing.
 
 Root Directory: evox-blockchain
+```
 evox-blockchain/
 ├── crates/                 # ماژول‌های اصلی (توسعه شده با Rust)
 │   ├── evox-core/          # هسته (اجماع، شبکه، امنیت)
@@ -80,3 +81,4 @@ evox-blockchain/
 ├── tests/                  # تست‌های فشار (Stress Tests) و امنیت
 ├── Cargo.toml              # فایل اصلی مدیریت پروژه Rust
 └── README.md               # ویترین پروژه (نام EvoX و شعار اصلی)
+```
