@@ -1,12 +1,3 @@
-#[package]
-#name = "evox-core"
-#version.workspace = true
-#authors.workspace = true
-#edition.workspace = true
-#description.workspace = true
-#
-#[dependencies]
-
 [package]
 name = "evox-core"
 version = "0.1.0"
