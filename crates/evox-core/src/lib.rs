@@ -1,85 +1,88 @@
-// use serde::{Serialize, Deserialize};
-// use std::collections::HashSet;
-//
-// /// نوع مختلف تراکنش در شبکه EvoX
-// #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-// pub enum TransactionType {
-//     Transfer,        // انتقال ساده دارایی
-//     ContractCall,    // فراخوانی یک قرارداد هوشمند
-//     Governance,      // تراکنش‌های مربوط به حاکمیت شبکه
-// }
-//
-// /// ساختار اصلی تراکنش در EvoX
-// /// طراحی شده برای سازگاری با اجرای موازی (Parallel Execution)
-// #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-// pub struct Transaction {
-//     // 1. شناسه‌های پایه
-//     pub sender: Vec<u8>,      // آدرس فرستنده (به صورت باینری برای سرعت بیشتر)
-//     pub nonce: u64,           // برای جلوگیری از حملات Replay
-//     pub tx_type: TransactionType,
-//
-//     // 2. داده‌های اصلی (Payload)
-//     pub payload: Vec<u8>,     // داده‌های مربوط به انتقال یا پارامترهای قرارداد
-//
-//     // 3. بخش کلیدی برای Parallelism: Access List
-//     // این لیست شامل تمام آدرس‌هایی است که این تراکنش قصد تغییر دادن آن‌ها را دارد.
-//     // موتور اجرا با نگاه کردن به این لیست، متوجه می‌شود که آیا این تراکنش
-//     // با تراکنش‌های دیگر تداخل دارد یا خیر.
-//     pub access_list: HashSet<Vec<u8>>,
-//
-//     // 4. امنیت
-//     pub signature: Vec<u8>,    // امضای دیجیتال تراکنش
-// }
-//
-// impl Transaction {
-//     /// ایجاد یک تراکنش ساده برای تست
-//     pub fn new_transfer(sender: Vec<u8>, receiver: Vec<u8>, amount: u64) -> Self {
-//         let mut access_list = HashSet::new();
-//         access_list.insert(sender.clone());
-//         access_list.insert(receiver.clone());
-//
-//         Self {
-//             sender,
-//             nonce: 0,
-//             tx_type: TransactionType::Transfer,
-//             payload: amount.to_be_bytes().to_vec(), // تبدیل عدد به بایت
-//             access_list,
-//             signature: vec![], // فعلاً خالی برای مرحله طراحی
-//         }
-//     }
-// }
-//
-// pub fn check_core() -> &'static str {
-//     "EvoX Core is operational"
-// }
-//
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//
-//     #[test]
-//     fn test_core_connection() {
-//         assert_eq!(check_core(), "EvoX Core is operational");
-//     }
-//
-//     #[test]
-//     fn test_transaction_creation() {
-//         let sender = b"alice_address".to_vec();
-//         let receiver = b"bob_address".to_vec();
-//         let tx = Transaction::new_transfer(sender.clone(), receiver.clone(), 100);
-//
-//         assert_eq!(tx.tx_type, TransactionType::Transfer);
-//         assert!(tx.access_list.contains(&sender));
-//         assert!(tx.access_list.contains(&receiver));
-//         assert_eq!(tx.payload, 100u64.to_be_bytes().to_vec());
-//     }
-// }
-
 use serde::{Serialize, Deserialize};
-use std::collections::HashSet;
-use evox_crypto::{sign, verify, SigningKey, VerifyingKey, CryptoError};
-// use ed25519_dalek::Signature;
-use evox_crypto::Signature;
+use std::collections::{HashSet, HashMap};
+use evox_crypto::{sign, verify, SigningKey, VerifyingKey, CryptoError, Signature};
+
+/// نمایش موجودی اکانت‌ها
+pub type Balance = u64;
+
+/// ساختار اکانت در شبکه
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Account {
+    pub address: Vec<u8>,
+    pub balance: Balance,
+}
+
+/// مدیریت وضعیت کل شبکه (State)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct State {
+    pub accounts: HashMap<Vec<u8>, Account>,
+}
+
+impl Default for State {
+    fn default() -> Self {
+        Self {
+            accounts: HashMap::new(),
+        }
+    }
+}
+
+impl State {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn create_account(&mut self, address: Vec<u8>, initial_balance: Balance) {
+        let account = Account {
+            address: address.clone(),
+            balance: initial_balance,
+        };
+        self.accounts.insert(address, account);
+    }
+
+    pub fn get_balance(&self, address: &[u8]) -> Option<Balance> {
+        self.accounts.get(address).map(|acc| acc.balance)
+    }
+
+    /// قلب تپنده: اعمال تراکنش روی State
+    pub fn apply_transaction(&mut self, tx: &Transaction, public_key: &VerifyingKey) -> Result<(), String> {
+        // 1. بررسی امضا
+        tx.verify_transaction(public_key).map_err(|e| format!("Crypto Error: {:?}", e))?;
+
+        // 2. استخراج اطلاعات تراکنش از Payload با استفاده از bincode
+        let sender_addr = tx.sender.clone();
+        let amount: u64 = bincode::deserialize(&tx.payload)
+            .map_err(|_| "Invalid payload format".to_string())?;
+
+        // پیدا کردن گیرنده از access_list (اولین آدرس غیر از فرستنده)
+        let receiver_addr = tx.access_list.iter()
+            .find(|&addr| addr != &sender_addr)
+            .ok_or("No receiver found in access list".to_string())?
+            .clone();
+
+        // 3. بررسی موجودی فرستنده
+        let sender_balance = self.get_balance(&sender_addr)
+            .ok_or("Sender account not found".to_string())?;
+
+        if sender_balance < amount {
+            return Err("Insufficient balance".to_string());
+        }
+
+        // 4. اجرای انتقال (Atomic update)
+        // ابتدا موجودی فرستنده را کم می‌کنیم
+        if let Some(sender_acc) = self.accounts.get_mut(&sender_addr) {
+            sender_acc.balance -= amount;
+        }
+
+        // سپس به گیرنده اضافه می‌کنیم (اگر وجود نداشت، بساز)
+        let receiver_acc = self.accounts.entry(receiver_addr.clone()).or_insert(Account {
+            address: receiver_addr,
+            balance: 0,
+        });
+        receiver_acc.balance += amount;
+
+        Ok(())
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum TransactionType {
@@ -95,45 +98,40 @@ pub struct Transaction {
     pub tx_type: TransactionType,
     pub payload: Vec<u8>,
     pub access_list: HashSet<Vec<u8>>,
-    pub signature: Vec<u8>, // امضا به صورت بایت ذخیره می‌شود
+    pub signature: Vec<u8>,
 }
 
 impl Transaction {
-    /// ایجاد یک تراکنش انتقال ساده (بدون امضا در ابتدا)
     pub fn new_transfer(sender: Vec<u8>, receiver: Vec<u8>, amount: u64) -> Self {
         let mut access_list = HashSet::new();
         access_list.insert(sender.clone());
         access_list.insert(receiver.clone());
 
+        // اصلاح اصلی: استفاده از bincode برای ذخیره مبلغ جهت سازگاری با deserialize
+        let payload = bincode::serialize(&amount).unwrap_or_default();
+
         Self {
             sender,
             nonce: 0,
             tx_type: TransactionType::Transfer,
-            payload: amount.to_be_bytes().to_vec(),
+            payload,
             access_list,
-            signature: vec![], // ابتدا خالی است
+            signature: vec![],
         }
     }
 
-    /// داده‌های اصلی تراکنش را برای امضا آماده می‌کند (بدون فیلد signature)
-    /// این تابع برای جلوگیری از تداخل، داده‌ها را سریالایز می‌کند
     fn get_signing_data(&self) -> Vec<u8> {
-        // ما یک نسخه از خود را بدون فیلد امضا می‌سازیم تا امضا کنیم
-        // برای سادگی در این مرحله، از bincode استفاده می‌کنیم
-        // در نسخه نهایی، این بخش بسیار بهینه خواهد بود
         let mut temp_tx = self.clone();
         temp_tx.signature = vec![];
         bincode::serialize(&temp_tx).unwrap_or_default()
     }
 
-    /// امضا کردن تراکنش با استفاده از کلید خصوصی
     pub fn sign_transaction(&mut self, signing_key: &SigningKey) {
         let data = self.get_signing_data();
         let signature = sign(signing_key, &data);
         self.signature = signature.to_bytes().to_vec();
     }
 
-    /// تأیید صحت تراکنش با استفاده از کلید عمومی فرستنده
     pub fn verify_transaction(&self, public_key: &VerifyingKey) -> Result<(), CryptoError> {
         if self.signature.is_empty() {
             return Err(CryptoError::InvalidSignature);
@@ -141,13 +139,12 @@ impl Transaction {
 
         let data = self.get_signing_data();
 
-        // تبدیل بایت‌های ذخیره شده به ساختار Signature
+        // تبدیل Vec به آرایه ثابت [u8; 64] برای کتابخانه رمزنگاری
         let sig_bytes: [u8; 64] = self.signature.clone()
             .try_into()
             .map_err(|_| CryptoError::InvalidSignature)?;
 
         let signature = Signature::from_bytes(&sig_bytes);
-
         verify(public_key, &data, &signature)
     }
 }
@@ -167,36 +164,50 @@ mod tests {
     }
 
     #[test]
-    fn test_full_transaction_lifecycle() {
-        // 1. تولید کلیدها
+    fn test_state_management() {
+        let mut state = State::new();
+        let addr = vec![1, 2, 3];
+        state.create_account(addr.clone(), 1000);
+        assert_eq!(state.get_balance(&addr), Some(1000));
+    }
+
+    #[test]
+    fn test_full_transaction_lifecycle_and_state_update() {
         let keypair = generate_keypair();
-        // let sender_address = keypair.verifying_key().to_bytes().to_vec();
-        let sender_address = keypair.verifying_key.to_bytes().to_vec();
+        let sender_addr = keypair.verifying_key.to_bytes().to_vec();
+        let receiver_addr = vec![4, 5, 6, 7];
 
-        let receiver_address = vec![1, 2, 3, 4];
+        // 1. آماده‌سازی State
+        let mut state = State::new();
+        state.create_account(sender_addr.clone(), 500);
 
-        // 2. ایجاد تراکنش
+        // 2. ایجاد و امضای تراکنش
         let mut tx = Transaction::new_transfer(
-            sender_address.clone(),
-            receiver_address,
-            100
+            sender_addr.clone(),
+            receiver_addr.clone(),
+            200
         );
-
-        // 3. امضا کردن تراکنش
         tx.sign_transaction(&keypair.signing_key);
-        assert!(!tx.signature.is_empty());
 
-        // 4. تأیید تراکنش (باید موفق باشد)
-        let verification_result = tx.verify_transaction(&keypair.verifying_key);
-        assert!(verification_result.is_ok());
+        // 3. بررسی صحت امضا قبل از اعمال
+        tx.verify_transaction(&keypair.verifying_key).expect("Signature verification failed before applying");
 
-        // 5. تست دستکاری داده‌ها (Tampering)
-        // تغییر مقدار Payload (مثلاً از 100 به 200)
-        tx.payload = 200u64.to_be_bytes().to_vec();
-        let tampered_result = tx.verify_transaction(&keypair.verifying_key);
-        assert!(tampered_result.is_err());
+        // 4. اعمال تراکنش روی State
+        state.apply_transaction(&tx, &keypair.verifying_key).expect("Failed to apply transaction");
 
-        println!("Lifecycle test passed: Transaction signed and verified successfully!");
+        // 5. بررسی تغییرات موجودی
+        assert_eq!(state.get_balance(&sender_addr), Some(300));
+        assert_eq!(state.get_balance(&receiver_addr), Some(200));
+
+        // 6. تست تراکنش با موجودی ناکافی
+        let mut tx_too_expensive = Transaction::new_transfer(
+            sender_addr.clone(),
+            receiver_addr,
+            1000
+        );
+        tx_too_expensive.sign_transaction(&keypair.signing_key);
+        let err_result = state.apply_transaction(&tx_too_expensive, &keypair.verifying_key);
+        assert!(err_result.is_err());
+        assert_eq!(err_result.unwrap_err(), "Insufficient balance");
     }
 }
-
