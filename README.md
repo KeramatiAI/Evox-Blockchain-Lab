@@ -56,18 +56,6 @@ This project is optimized for professional Rust development.
    cargo check
 ```
 
-🗺 Roadmap
-[ ] Phase 1: The Blueprint (Protocol design, Whitepaper, Architecture definition)
-[ ] Phase 2: The Genesis (Implementation of evox-core and basic networking)
-[ ] Phase 3: The Engine (Developing evox-runtime for parallel execution)
-[ ] Phase 4: The State (Implementing evox-state and stateless client concepts)
-[ ] Phase 5: MVP (A functional testnet for simple asset transfers)
-
-🤝 Contributing
-This is currently in the Lab Phase. We are defining the foundations of the next generation of blockchain technology.
-
-Built with ❤️ and Rust for the future of decentralized computing.
-
 Root Directory: evox-blockchain
 ```
 evox-blockchain/
@@ -82,3 +70,9 @@ evox-blockchain/
 ├── Cargo.toml              # فایل اصلی مدیریت پروژه Rust
 └── README.md               # ویترین پروژه (نام EvoX و شعار اصلی)
 ```
+
+🤝 Contributing
+This is currently in the Lab Phase. We are defining the foundations of the next generation of blockchain technology.
+
+Built with ❤️ and Rust for the future of decentralized computing.
+
