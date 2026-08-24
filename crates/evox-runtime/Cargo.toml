@@ -1,0 +1,8 @@
+[package]
+name = "evox-runtime"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+description.workspace = true
+
+[dependencies]
